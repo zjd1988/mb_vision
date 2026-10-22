@@ -1,0 +1,8 @@
+/target/
+/config/
+/data/
+/models/
+/snapshots/
+/out/
+mibee-vision-lite-v0.1.0-linux-x86_64
+libonnxruntime-*.so

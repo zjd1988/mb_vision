@@ -1,0 +1,32 @@
+[package]
+name = "mibeevision"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "=1.0.102"
+base64 = "=0.22.1"
+bytes = "=1.11.1"
+chrono = { version = "=0.4.45", features = ["clock", "serde"] }
+clap = { version = "=4.6.0", features = ["derive", "env"] }
+ffmpeg-the-third = { version = "=5.0.0", features = ["build"] }
+futures-util = "=0.3.32"
+http-body-util = "=0.1.3"
+hyper = { version = "=1.10.1", features = ["http1", "server"] }
+hyper-util = { version = "=0.1.20", features = ["tokio"] }
+image = "=0.25.10"
+jamtrack-rs = { path = "vendor/jamtrack-rs" }
+ort = { version = "=2.0.0-rc.2", default-features = false, features = ["load-dynamic"] }
+ort-sys = { version = "=2.0.0-rc.2", default-features = false, features = ["load-dynamic"] }
+rand = "=0.9.4"
+reqwest = { version = "=0.12.28", default-features = false, features = ["json", "rustls-tls", "stream"] }
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.150"
+tokio = { version = "=1.52.3", features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+toml = "=0.8.23"
+tracing = "0.1"
+tracing-subscriber = "=0.3.23"
+turso = { version = "=0.7.0", default-features = false }
+
+[profile.release]
+strip = "symbols"

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiBeeVision 配置</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body { font: 14px/1.6 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; background: #f5f6f8; color: #222; }
+  header { background: #1f2937; color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .badge { font-size: 12px; background: #2563eb; border-radius: 4px; padding: 1px 8px; }
+  .badge.pro { background: #b45309; }
+  main { max-width: 860px; margin: 20px auto; padding: 0 16px 60px; }
+  section { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+  h2 { font-size: 14px; margin: 0 0 12px; color: #374151; }
+  label { display: block; margin: 10px 0 4px; font-weight: 500; }
+  input, select, textarea { width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; background: inherit; color: inherit; }
+  textarea { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  button { padding: 8px 18px; border: 0; border-radius: 6px; font: inherit; cursor: pointer; background: #2563eb; color: #fff; }
+  button.ghost { background: #e5e7eb; color: #374151; }
+  button:disabled { opacity: .5; cursor: default; }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+  .hint { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .status { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .dot.on { background: #16a34a; } .dot.off { background: #dc2626; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  td, th { text-align: left; padding: 4px 8px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+  #toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 22px; border-radius: 8px; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 80vw; }
+  #toast.show { opacity: .95; }
+  #toast.err { background: #991b1b; }
+  .err-text { color: #dc2626; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>MiBeeVision</h1>
+  <span class="badge" id="edition-badge">…</span>
+  <span class="hint" style="color:#9ca3af">视频流 AI 后期处理引擎</span>
+</header>
+<main>
+  <section>
+    <h2>运行状态</h2>
+    <div class="status">
+      <span><span class="dot off" id="pipe-dot"></span>管线 <b id="pipe-state">未知</b></span>
+      <span>NVR <b id="nvr-state">-</b></span>
+      <span>摄像头 <b id="cam-state">-</b></span>
+      <span>版本 <b id="ver-state">-</b></span>
+      <span>运行 <b id="uptime-state">-</b></span>
+    </div>
+    <div class="err-text" id="pipe-err"></div>
+    <h2 style="margin-top:14px">最近事件</h2>
+    <table><thead><tr><th>时间</th><th>摄像头</th><th>类型</th><th>区域</th><th>置信度</th></tr></thead>
+    <tbody id="events-body"><tr><td colspan="5" style="color:#9ca3af">加载中…</td></tr></tbody></table>
+  </section>
+
+  <section>
+    <h2>NVR 连接</h2>
+    <label>NVR 地址 <span class="hint">(如 http://192.0.2.10:9090)</span></label>
+    <input id="nvr_url" placeholder="http://">
+    <label>API Key <span class="hint">必须是 <b>mbv_</b> 开头的 API Key(NVR「设置 → AI 检测」生成);网页登录用的 mbs_ token 无效</span></label>
+    <input id="nvr_key" placeholder="mbv_...">
+    <div class="actions">
+      <button class="ghost" id="btn-test">测试连接并拉取摄像头</button>
+      <span class="hint" id="test-hint"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>摄像头与检测</h2>
+    <label>处理摄像头</label>
+    <select id="camera"><option value="">(先测试连接)</option></select>
+    <div class="row">
+      <div><label>检测置信度阈值 (0–1)</label><input id="conf" type="number" step="0.05" min="0.05" max="0.95"></div>
+      <div><label>抽帧帧率 fps</label><input id="fps" type="number" step="0.5" min="0.5" max="10"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>事件区域(归一化坐标 0–1)</h2>
+    <label>规则名称</label>
+    <input id="zone_name" placeholder="如:大门">
+    <label>顶点 <span class="hint">格式 "x,y x,y x,y x,y",如 0.2,0.2 0.8,0.2 0.8,0.8 0.2,0.8</span></label>
+    <textarea id="zone_points" rows="2"></textarea>
+    <label>连续命中帧数(防抖)</label>
+    <input id="zone_frames" type="number" min="1" max="60">
+    <div class="actions">
+      <button class="ghost" id="btn-fullframe">全画面</button>
+    </div>
+  </section>
+
+  <div class="actions" style="margin-bottom:20px">
+    <button id="btn-save">保存(自动重启管线)</button>
+    <span class="hint" id="save-hint"></span>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script>
+"use strict";
+let CFG = null;
+const $ = (id) => document.getElementById(id);
+const toast = (msg, isErr) => {
+  const t = $("toast"); t.textContent = msg; t.className = "show" + (isErr ? " err" : "");
+  setTimeout(() => t.className = "", 3500);
+};
+
+async function loadConfig() {
+  const r = await fetch("/api/config");
+  CFG = await r.json();
+  $("nvr_url").value = CFG.nvr?.api_base_url || "";
+  $("nvr_key").value = CFG.nvr?.api_key || "";
+  const wl = (CFG.source?.camera_whitelist || []).filter(c => c && !c.startsWith("<"));
+  $("cam-state").textContent = wl[0] || "(未选择)";
+  $("conf").value = CFG.detect?.conf_threshold ?? 0.25;
+  $("fps").value = CFG.source?.nvr_files?.sample_fps ?? 2;
+  const z = (CFG.event?.zones || [])[0] || {};
+  $("zone_name").value = z.name || "";
+  $("zone_points").value = (z.points || []).map(p => p[0] + "," + p[1]).join(" ");
+  $("zone_frames").value = z.min_duration_frames ?? 3;
+}
+
+async function loadStatus() {
+  try {
+    const s = await (await fetch("/api/status")).json();
+    const badge = $("edition-badge");
+    badge.textContent = s.edition === "lite" ? "Lite 免费版" : "Pro 版";
+    badge.className = "badge" + (s.edition === "lite" ? "" : " pro");
+    document.title = "MiBeeVision 配置 (" + s.edition + ")";
+    $("pipe-state").textContent = s.pipeline_running ? "运行中" : "已停止";
+    $("pipe-dot").className = "dot " + (s.pipeline_running ? "on" : "off");
+    $("pipe-err").textContent = s.last_pipeline_error || "";
+    $("ver-state").textContent = "v" + s.version;
+    $("uptime-state").textContent = Math.round(s.uptime_secs / 60) + " 分钟";
+    $("nvr-state").textContent = s.nvr?.reachable ? "已连接" : ("未连接" + (s.nvr?.status ? "(" + s.nvr.status + ")" : ""));
+    const tb = $("events-body");
+    const evs = s.recent_events;
+    if (evs === null || evs === undefined) { tb.innerHTML = '<tr><td colspan="5" style="color:#9ca3af">(数据库未就绪)</td></tr>'; }
+    else if (!evs.length) { tb.innerHTML = '<tr><td colspan="5" style="color:#9ca3af">(暂无事件)</td></tr>'; }
+    else tb.innerHTML = evs.map(e => "<tr><td>" + (e.occurred_at || "").replace("T", " ").slice(0, 19) + "</td><td>" +
+      (e.camera_id || "") + "</td><td>" + (e.event_type || "") + "</td><td>" + (e.zone_name || "") +
+      '</td><td>' + (e.confidence != null ? e.confidence.toFixed(2) : "") + "</td></tr>").join("");
+  } catch (e) { /* 状态轮询失败不打扰 */ }
+}
+
+async function testConnection() {
+  const base = $("nvr_url").value.trim();
+  const key = $("nvr_key").value.trim();
+  if (!base) { $("test-hint").textContent = "请先填写 NVR 地址"; toast("请先填写 NVR 地址", true); return; }
+  $("test-hint").textContent = "连接中…";
+  try {
+    // 用输入框里**未保存**的地址/Key 探测(POST 避免 key 进 URL):
+    // 首次使用就是「填地址 → 测试连接 → 保存」,不能只探已保存配置。
+    const r = await (await fetch("/api/nvr/probe", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base: base, key: key })
+    })).json();
+    if (!r.ok) { $("test-hint").textContent = "失败:" + (r.message || ""); toast("连接失败:" + (r.message || ""), true); return; }
+    const sel = $("camera");
+    sel.innerHTML = '<option value="">请选择摄像头</option>' + r.cameras.map(c =>
+      '<option value="' + c.id + '">' + (c.name || "(未命名)") + " · " + c.id + "</option>").join("");
+    const cur = (CFG?.source?.camera_whitelist || [])[0];
+    if (cur && !cur.startsWith("<")) sel.value = cur;
+    $("test-hint").textContent = "拉到 " + r.cameras.length + " 个摄像头";
+    toast("连接成功,拉到 " + r.cameras.length + " 个摄像头");
+  } catch (e) { $("test-hint").textContent = "失败:" + e; toast("连接失败", true); }
+}
+
+function parsePoints(text) {
+  return text.trim().split(/\s+/).filter(Boolean).map(tok => {
+    const [x, y] = tok.split(",").map(Number);
+    return [x, y];
+  }).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]) && p.length === 2);
+}
+
+async function save() {
+  const cam = $("camera").value;
+  if (!cam) { toast("请先选择摄像头", true); return; }
+  const points = parsePoints($("zone_points").value);
+  if (points.length < 3) { toast("区域至少需要 3 个顶点", true); return; }
+  const next = JSON.parse(JSON.stringify(CFG || {}));
+  next.nvr = next.nvr || {};
+  next.nvr.api_base_url = $("nvr_url").value.trim();
+  next.nvr.api_key = $("nvr_key").value.trim();
+  next.source = next.source || {};
+  next.source.camera_whitelist = [cam];
+  next.source.nvr_files = next.source.nvr_files || {};
+  next.source.nvr_files.sample_fps = parseFloat($("fps").value) || 2;
+  next.detect = next.detect || {};
+  next.detect.conf_threshold = parseFloat($("conf").value) || 0.25;
+  next.event = next.event || {};
+  next.event.zones = [{
+    name: $("zone_name").value.trim() || "区域1",
+    zone_type: "intrusion",
+    points: points,
+    classes: [0],
+    min_duration_frames: parseInt($("zone_frames").value) || 3
+  }];
+  $("save-hint").textContent = "保存中…";
+  const r = await fetch("/api/config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
+  const j = await r.json().catch(() => ({}));
+  if (r.ok && j.ok) { $("save-hint").textContent = "已保存,管线重启中(版本 v" + j.version + ")"; toast("已保存,管线正在重启"); CFG = next; }
+  else { $("save-hint").textContent = ""; toast("保存失败:" + (j.message || r.status), true); }
+}
+
+$("btn-test").onclick = testConnection;
+$("btn-save").onclick = save;
+$("btn-fullframe").onclick = () => { $("zone_points").value = "0.02,0.02 0.98,0.02 0.98,0.98 0.02,0.98"; };
+loadConfig(); loadStatus(); setInterval(loadStatus, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+[package]
+name = "jamtrack-rs"
+version = "0.7.0"
+edition = "2024"
+authors = ["kadu-v (Kazuki Ikemori)"]
+description = "ByteTrack implementation in Rust"
+license = "MIT"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+thiserror = "1.0.66"
+nalgebra = "0.33.2"
+num = "0.4.3"
+
+[dev-dependencies]
+nearly_eq = "0.2.4"
+quickcheck = "1.0.3"
+rand = "0.8.5"
